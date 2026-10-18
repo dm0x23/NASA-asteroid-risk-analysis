@@ -99,26 +99,16 @@ par(mfrow = c(1, 1))
 
 ### 1.3 Theoretical Distribution Fitting
 
-#### A. Normal Distribution Fitting
-Fitting a theoretical Gaussian curve to `relative_velocity`:
-
 ```{r fit-normal}
-v_mean <- mean(neo_data$relative_velocity)
-v_sd   <- sd(neo_data$relative_velocity)
+v_mean <- mean(neo_data$relative_velocity, na.rm = TRUE)
+v_sd   <- sd(neo_data$relative_velocity, na.rm = TRUE)
 
 hist(neo_data$relative_velocity, breaks = 35, probability = TRUE, col = "gray90",
      main = "Fitted Normal PDF vs. Empirical Velocity", xlab = "Velocity (km/h)")
 curve(dnorm(x, mean = v_mean, sd = v_sd), add = TRUE, col = "red", lwd = 2)
-legend("topright", legend = c("Empirical Density", "Fitted Normal"), 
+legend("topright", legend = c("Empirical Density", "Fitted Normal"),
        col = c("black", "red"), lwd = c(1, 2))
 ```
-
-#### B. Poisson Distribution Fitting
-Modeling monthly encounter arrival rates ($\lambda$):
-
-```{r fit-poisson}
-# to get a reasonable discrete Poisson count per interval
-n_intervals <- 50
 interval_counts <- as.numeric(table(cut(seq_len(nrow(neo_data)), breaks = n_intervals)))
 
 lambda_hat <- mean(interval_counts)
@@ -137,6 +127,7 @@ lines(x_range, pois_pmf, col = "darkgreen", type = "b", pch = 19, lwd = 2)
 
 legend("topright", legend = c("Empirical Frequency", "Fitted Poisson PMF"),
        col = c("lightcyan", "darkgreen"), pch = c(15, 19), lwd = c(2, 2))
+```
 
 #### C. Binomial Distribution Fitting
 Modeling the count of hazardous detections ($k$) in a random batch of $n = 50$:
@@ -152,7 +143,6 @@ plot(k_vals, binom_probs, type = "h", lwd = 3, col = "purple",
      main = paste("Binomial PMF (n=50, p=", round(p_hat, 2), ")"),
      xlab = "Hazardous Asteroids in Batch", ylab = "Probability")
 ```
-
 ---
 
 # Section 2: Inferential Statistics & Hypothesis Testing (Person 2)
@@ -195,8 +185,22 @@ print(t_paired)
 ### 2.3 Chi-Square Tests
 
 ```{r chi-square-tests}
-# Contingency Test (Test of Independence between Hazard and Orbit Class)
-chi_tbl <- table(neo_data$orbit_class, neo_data$is_potentially_hazardous)
+# Test 6: Chi-Square Test of Independence
+# If orbit_class doesn't exist in neo.csv, derive an orbital velocity regime proxy
+if (!"orbit_class" %in% names(neo_data) || is.null(neo_data$orbit_class)) {
+  neo_data$orbit_class <- cut(
+    neo_data$relative_velocity,
+    breaks = quantile(neo_data$relative_velocity, probs = c(0, 0.33, 0.66, 1), na.rm = TRUE),
+    labels = c("Low-Velocity", "Mid-Velocity", "High-Velocity"),
+    include.lowest = TRUE
+  )
+}
+
+# Ensure complete paired observations
+valid_idx <- complete.cases(neo_data$orbit_class, neo_data$is_potentially_hazardous)
+chi_tbl <- table(neo_data$orbit_class[valid_idx], neo_data$is_potentially_hazardous[valid_idx])
+print(chi_tbl)
+
 chi_res <- chisq.test(chi_tbl)
 print(chi_res)
 
