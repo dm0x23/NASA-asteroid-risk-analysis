@@ -117,19 +117,26 @@ legend("topright", legend = c("Empirical Density", "Fitted Normal"),
 Modeling monthly encounter arrival rates ($\lambda$):
 
 ```{r fit-poisson}
-# Frequency of encounters per month category
-encounter_counts <- as.numeric(table(neo_data$close_approach_month))
-lambda_hat <- mean(encounter_counts)
+# to get a reasonable discrete Poisson count per interval
+n_intervals <- 50
+interval_counts <- as.numeric(table(cut(seq_len(nrow(neo_data)), breaks = n_intervals)))
 
-cat("Estimated Poisson Rate Parameter (lambda):", round(lambda_hat, 3), "events/period\n")
+lambda_hat <- mean(interval_counts)
+cat("Estimated Poisson Rate Parameter (lambda):", round(lambda_hat, 2), "encounters/interval\n")
 
-# Overlay observed vs expected Poisson frequencies
-x_vals <- 0:max(encounter_counts)
-pois_pmf <- dpois(x_vals, lambda = lambda_hat) * length(encounter_counts)
-barplot(table(factor(encounter_counts, levels = x_vals)), col = "lightcyan",
-        main = "Poisson Fit for Arrival Rates", xlab = "Events", ylab = "Frequency")
-lines(x_vals + 1, pois_pmf, col = "darkgreen", type = "b", pch = 19, lwd = 2)
-```
+# Histogram of observed counts per interval
+h <- hist(interval_counts, breaks = 15, plot = FALSE)
+plot(h, col = "lightcyan", freq = FALSE,
+     main = paste0("Poisson Fit to Arrival Rates (lambda = ", round(lambda_hat, 1), ")"),
+     xlab = "Encounter Count per Interval", ylab = "Relative Frequency")
+
+# Overlay theoretical Poisson density curve
+x_range <- seq(min(interval_counts), max(interval_counts))
+pois_pmf <- dpois(x_range, lambda = round(lambda_hat))
+lines(x_range, pois_pmf, col = "darkgreen", type = "b", pch = 19, lwd = 2)
+
+legend("topright", legend = c("Empirical Frequency", "Fitted Poisson PMF"),
+       col = c("lightcyan", "darkgreen"), pch = c(15, 19), lwd = c(2, 2))
 
 #### C. Binomial Distribution Fitting
 Modeling the count of hazardous detections ($k$) in a random batch of $n = 50$:
