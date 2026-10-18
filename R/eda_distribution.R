@@ -1,8 +1,7 @@
 library(tidyverse)
-library(tidyverse)
 
-if (!dir.exists("data/data/processed")) {
-  dir.create("data/data/processed", recursive = TRUE)
+if (!dir.exists("data/processed")) {
+  dir.create("data/processed", recursive = TRUE)
 }
 
 raw_data <- read.csv("data/raw/neo.csv")
