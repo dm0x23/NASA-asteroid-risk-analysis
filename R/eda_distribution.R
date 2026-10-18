@@ -1,15 +1,33 @@
 library(tidyverse)
+library(tidyverse)
+
+if (!dir.exists("data/data/processed")) {
+  dir.create("data/data/processed", recursive = TRUE)
+}
+
+raw_data <- read.csv("data/raw/neo.csv")
+
+clean_neo <- raw_data %>%
+  rename_with(~ "estimated_diameter_max", any_of(c("est_diameter_max", "estimated_diameter_max.km."))) %>%
+  rename_with(~ "estimated_diameter_min", any_of(c("est_diameter_min", "estimated_diameter_min.km."))) %>%
+  rename_with(~ "is_potentially_hazardous", any_of(c("is_hazardous", "hazardous"))) %>%
+  mutate(
+    is_potentially_hazardous = as.logical(is_potentially_hazardous),
+    estimated_diameter_max   = as.numeric(estimated_diameter_max),
+    relative_velocity        = as.numeric(relative_velocity)
+  ) %>%
+  drop_na(any_of(c("estimated_diameter_max", "relative_velocity", "is_potentially_hazardous")))
+
+write.csv(clean_neo, "data/data/processed/clean_neo.csv", row.names = FALSE)
 
 if (!dir.exists("output")) dir.create("output")
 
 neo <- read.csv("data/raw/neo.csv")
 
-# Standardize column names to match the guide
 neo <- neo %>%
   rename_with(~ "estimated_diameter_max", any_of(c("est_diameter_max", "estimated_diameter_max.km."))) %>%
   rename_with(~ "is_potentially_hazardous", any_of(c("is_hazardous", "hazardous")))
 
-# 1. Summary Statistics
 print(summary(neo$estimated_diameter_max))
 diam_sd  <- sd(neo$estimated_diameter_max, na.rm = TRUE)
 diam_iqr <- IQR(neo$estimated_diameter_max, na.rm = TRUE)
@@ -17,7 +35,6 @@ diam_iqr <- IQR(neo$estimated_diameter_max, na.rm = TRUE)
 cat("Standard Deviation:", diam_sd, "\n")
 cat("IQR:", diam_iqr, "\n")
 
-# 2. Visualizations
 p_hist <- ggplot(neo, aes(x = estimated_diameter_max)) +
   geom_histogram(bins = 35, fill = "#2b5c8f", color = "white") +
   scale_x_log10() +
@@ -38,7 +55,6 @@ p_box <- ggplot(neo, aes(x = as.factor(is_potentially_hazardous),
   theme(legend.position = "none")
 ggsave("output/speed_by_hazard_boxplot.png", plot = p_box, width = 6, height = 4.5)
 
-# 3. Normal Distribution (Velocity)
 vel_mean <- mean(neo$relative_velocity, na.rm = TRUE)
 vel_sd   <- sd(neo$relative_velocity, na.rm = TRUE)
 
@@ -58,12 +74,10 @@ qqnorm(neo$relative_velocity, main = "Q-Q Plot: Relative Velocity")
 qqline(neo$relative_velocity, col = "red", lwd = 2)
 dev.off()
 
-# 4. Binomial Distribution
 p_hat <- mean(neo$is_potentially_hazardous == TRUE, na.rm = TRUE)
 prob_exact_3 <- dbinom(x = 3, size = 20, prob = p_hat)
 cat("P(X = 3 | n = 20):", prob_exact_3, "\n")
 
-# 5. Poisson Distribution
 lambda_rate <- nrow(neo) / 12
 k_range <- 0:ceiling(lambda_rate * 2)
 poisson_df <- data.frame(events = k_range, prob = dpois(k_range, lambda = lambda_rate))
