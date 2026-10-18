@@ -1,35 +1,32 @@
 library(tidyverse)
 
-if (!dir.exists("data/processed")) {
-  dir.create("data/processed", recursive = TRUE)
+if (!dir.exists("output")) dir.create("output")[cite: 3]
+if (!dir.exists("data/processed")) dir.create("data/processed", recursive = TRUE)
+
+rds_path <- "data/processed/neo_clean.rds"
+
+if (file.exists(rds_path)) {
+  neo <- readRDS(rds_path)
+} else {
+  raw_data <- read.csv("data/raw/neo.csv")[cite: 6]
+  
+  neo <- raw_data %>%
+    rename_with(~ "estimated_diameter_max", any_of(c("est_diameter_max", "estimated_diameter_max.km."))) %>%
+    rename_with(~ "estimated_diameter_min", any_of(c("est_diameter_min", "estimated_diameter_min.km."))) %>%
+    rename_with(~ "is_potentially_hazardous", any_of(c("is_hazardous", "hazardous"))) %>%
+    mutate(
+      is_potentially_hazardous = as.logical(is_potentially_hazardous),
+      estimated_diameter_max   = as.numeric(estimated_diameter_max),
+      relative_velocity        = as.numeric(relative_velocity)
+    ) %>%
+    drop_na(any_of(c("estimated_diameter_max", "relative_velocity", "is_potentially_hazardous")))
+  
+  saveRDS(neo, file = rds_path)
 }
 
-raw_data <- read.csv("data/raw/neo.csv")
-
-clean_neo <- raw_data %>%
-  rename_with(~ "estimated_diameter_max", any_of(c("est_diameter_max", "estimated_diameter_max.km."))) %>%
-  rename_with(~ "estimated_diameter_min", any_of(c("est_diameter_min", "estimated_diameter_min.km."))) %>%
-  rename_with(~ "is_potentially_hazardous", any_of(c("is_hazardous", "hazardous"))) %>%
-  mutate(
-    is_potentially_hazardous = as.logical(is_potentially_hazardous),
-    estimated_diameter_max   = as.numeric(estimated_diameter_max),
-    relative_velocity        = as.numeric(relative_velocity)
-  ) %>%
-  drop_na(any_of(c("estimated_diameter_max", "relative_velocity", "is_potentially_hazardous")))
-
-write.csv(clean_neo, "data/data/processed/clean_neo.csv", row.names = FALSE)
-
-if (!dir.exists("output")) dir.create("output")
-
-neo <- read.csv("data/raw/neo.csv")
-
-neo <- neo %>%
-  rename_with(~ "estimated_diameter_max", any_of(c("est_diameter_max", "estimated_diameter_max.km."))) %>%
-  rename_with(~ "is_potentially_hazardous", any_of(c("is_hazardous", "hazardous")))
-
-print(summary(neo$estimated_diameter_max))
-diam_sd  <- sd(neo$estimated_diameter_max, na.rm = TRUE)
-diam_iqr <- IQR(neo$estimated_diameter_max, na.rm = TRUE)
+print(summary(neo$estimated_diameter_max))[cite: 2]
+diam_sd  <- sd(neo$estimated_diameter_max, na.rm = TRUE)[cite: 1, 2]
+diam_iqr <- IQR(neo$estimated_diameter_max, na.rm = TRUE)[cite: 1]
 
 cat("Standard Deviation:", diam_sd, "\n")
 cat("IQR:", diam_iqr, "\n")
@@ -70,16 +67,16 @@ ggsave("output/velocity_density_normal.png", plot = p_norm, width = 7, height = 
 
 png("output/velocity_qqplot.png", width = 600, height = 500)
 qqnorm(neo$relative_velocity, main = "Q-Q Plot: Relative Velocity")
-qqline(neo$relative_velocity, col = "red", lwd = 2)
+qqline(neo$relative_velocity, col = "red", lwd = 2)[cite: 2]
 dev.off()
 
-p_hat <- mean(neo$is_potentially_hazardous == TRUE, na.rm = TRUE)
-prob_exact_3 <- dbinom(x = 3, size = 20, prob = p_hat)
+p_hat <- mean(neo$is_potentially_hazardous == TRUE, na.rm = TRUE)[cite: 2]
+prob_exact_3 <- dbinom(x = 3, size = 20, prob = p_hat)[cite: 2]
 cat("P(X = 3 | n = 20):", prob_exact_3, "\n")
 
-lambda_rate <- nrow(neo) / 12
+lambda_rate <- nrow(neo) / 12[cite: 2]
 k_range <- 0:ceiling(lambda_rate * 2)
-poisson_df <- data.frame(events = k_range, prob = dpois(k_range, lambda = lambda_rate))
+poisson_df <- data.frame(events = k_range, prob = dpois(k_range, lambda = lambda_rate))[cite: 2]
 
 p_pois <- ggplot(poisson_df, aes(x = events, y = prob)) +
   geom_col(fill = "#5cb85c", color = "blue") +
